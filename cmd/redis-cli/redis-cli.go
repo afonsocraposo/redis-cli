@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-const HELP_PATH = "/Users/prezi/Documents/redis-cli/assets/help/commands/"
-
 func main() {
 	var hostname string
 	var port int
@@ -61,7 +59,7 @@ func main() {
 			if after == "" {
 				fmt.Println("HELP COMMAND")
 			} else {
-				helpText := help.GetHelpText(command, HELP_PATH)
+				helpText := help.GetHelpText(command)
 				fmt.Println(helpText)
 			}
 		} else {

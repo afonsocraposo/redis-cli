@@ -1,4 +1,4 @@
-package test
+package resp
 
 import (
 	"github.com/afonsocraposo/redis-cli/internal/resp"

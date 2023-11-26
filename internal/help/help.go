@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"strings"
+	"github.com/afonsocraposo/redis-cli/configs"
+	"github.com/afonsocraposo/redis-cli/internal/helpers"
 )
 
 type command struct {
@@ -104,33 +106,78 @@ func parseFile(filepath string) (*command, error) {
 	return &c, nil
 }
 
-func GetHelpText(command string, helpPath string) string {
+func getBlockHelp(arg argument) string {
+	options := make([]string, len(*arg.Arguments))
+	for i, option := range *arg.Arguments {
+		h := parseHelpArg(option)
+		options[i] = h
+	}
+	h := strings.Join(options, " ")
+	if arg.Optional != nil && *arg.Optional && arg.Token != nil {
+		return fmt.Sprintf("[%s %s]", *arg.Token, h)
+	} else {
+		return fmt.Sprintf("[%s]", h)
+	}
+}
+
+func getOneOfHelp(arg argument) string {
+	options := make([]string, len(*arg.Arguments))
+	for i, option := range *arg.Arguments {
+		h := fmt.Sprintf("%s", *option.Token)
+		if option.Type != "pure-token" {
+			h += fmt.Sprintf(" %s", getPureToken(option))
+		}
+		options[i] = h
+	}
+	help := fmt.Sprintf("[%s]", strings.Join(options, "|"))
+	return help
+}
+
+func getPureToken(arg argument) string {
+	if arg.Optional != nil && *arg.Optional && arg.Token != nil {
+		return fmt.Sprintf("[%s]", *arg.Token)
+	} else {
+		return fmt.Sprintf("%s", arg.Name)
+	}
+}
+
+func getDefault(arg argument) string {
+	if arg.Optional != nil && *arg.Optional && arg.Token != nil {
+		return fmt.Sprintf("[%s %s]", *arg.Token, arg.Name)
+	} else {
+		return fmt.Sprintf("%s", arg.Name)
+	}
+}
+
+func parseHelpArg(arg argument) string {
+	switch arg.Type {
+	case "oneof":
+		return getOneOfHelp(arg)
+	case "block":
+		return getBlockHelp(arg)
+	case "pure-token":
+		return getPureToken(arg)
+	default:
+		return getDefault(arg)
+	}
+}
+
+func GetHelpText(command string) string {
+    helpPath := helpers.ParsePath((settings.HELP_ASSETS_PATH))
+
 	lCommand := strings.ToLower(command)
-    filepath := path.Join(helpPath, lCommand) + ".json"
+	filepath := path.Join(helpPath, lCommand) + ".json"
 	c, err := parseFile(filepath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	uCommand := strings.ToUpper(command)
-	help := "\n"+uCommand
+	help := "\n" + uCommand
 	for _, arg := range c.Arguments {
-		switch arg.Type {
-		case "oneof":
-			options := make([]string, len(*arg.Arguments))
-			for i, option := range *arg.Arguments {
-				h := fmt.Sprintf("%s", *option.Token)
-				if option.Type != "pure-token" {
-					h += fmt.Sprintf(" %s", option.Name)
-				}
-				options[i] = h
-			}
-			help += fmt.Sprintf(" [%s]", strings.Join(options, "|"))
-		default:
-			help += fmt.Sprintf(" %s", arg.Name)
-		}
+		h := parseHelpArg(arg)
+		help += fmt.Sprintf(" %s", h)
 	}
-    help += fmt.Sprintf("\nsummary: %s\nsince: %s\ngroup: %s\n", c.Summary, c.Since, c.Group)
+	help += fmt.Sprintf("\nsummary: %s\nsince: %s\ngroup: %s\n", c.Summary, c.Since, c.Group)
 	return help
 }
-
